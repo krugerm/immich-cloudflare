@@ -1,0 +1,59 @@
+{
+  "name": "immich-cloudflare",
+  "version": "1.0.0",
+  "description": "",
+  "directories": {
+    "doc": "docs",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "dev": "wrangler dev",
+    "build": "node scripts/fetch-web.mjs",
+    "deploy": "node scripts/setup.mjs && wrangler deploy && wrangler d1 migrations apply DB --remote",
+    "deploy:local": "node scripts/fetch-web.mjs && node scripts/setup.mjs -c wrangler.local.jsonc && wrangler deploy -c wrangler.local.jsonc && wrangler d1 migrations apply DB --remote -c wrangler.local.jsonc",
+    "typecheck": "tsc --noEmit",
+    "gen": "openapi-typescript vendor/immich-openapi.json -o src/gen/immich.d.ts && wrangler types",
+    "build:web": "scripts/build-web.sh",
+    "e2e": "node scripts/e2e-upload.mjs",
+    "golden": "node scripts/golden-sync.mjs",
+    "coverage:api": "node scripts/api-coverage.mjs"
+  },
+  "cloudflare": {
+    "bindings": {
+      "CLIP_INDEX": {
+        "description": "Photo embeddings for smart search (SigLIP2). Set **Dimensions** to `768` and **Metric** to `cosine`."
+      },
+      "FACE_INDEX": {
+        "description": "Face embeddings (buffalo_l). Set **Dimensions** to `512` and **Metric** to `cosine`."
+      },
+      "APP_NAME": {
+        "description": "Product name used in password-reset email. `Immich` is fine."
+      },
+      "MAIL_FROM": {
+        "description": "Sender of password-reset email, e.g. `Photos <photos@example.com>`. Email only goes out once you also add a [Resend](https://resend.com) API key as the `RESEND_API_KEY` secret; leave as is to skip."
+      }
+    }
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "private": "true",
+  "dependencies": {
+    "@cloudflare/containers": "^0.3.7",
+    "@photostructure/tz-lookup": "^11.7.0",
+    "exifr": "^7.1.3",
+    "fast-png": "^8.0.0",
+    "hono": "^4.13.13",
+    "thumbhash": "^0.1.1"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "^1.4.0",
+    "@types/node": "^26.6.5",
+    "openapi-typescript": "^7.13.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.11",
+    "wrangler": "^4.149.0"
+  }
+}

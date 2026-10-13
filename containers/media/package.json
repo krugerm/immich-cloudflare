@@ -1,0 +1,10 @@
+{
+  "name": "immich-cf-media",
+  "private": true,
+  "type": "module",
+  "description": "Media container: ffprobe/ffmpeg video posters, RAW and large image decode to JPEG",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test test/"
+  }
+}

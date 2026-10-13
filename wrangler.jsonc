@@ -1,0 +1,79 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "immich-cf",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "limits": { "cpu_ms": 300000 },
+  "workers_dev": true,
+  // To serve the Worker on your own domain (a zone in the same Cloudflare account), add:
+  // "routes": [{ "pattern": "photos.example.com", "custom_domain": true }],
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/.well-known/*", "/forgot-password", "/reset-password"]
+  },
+  // D1 and the R2 buckets are created on the first `wrangler deploy` (or by the Deploy to Cloudflare button), and
+  // wrangler writes the new database_id back here. Queues and Vectorize indexes come from scripts/setup.mjs.
+  "d1_databases": [
+    { "binding": "DB", "database_name": "immich", "migrations_dir": "migrations" }
+  ],
+  "r2_buckets": [
+    { "binding": "MEDIA", "bucket_name": "immich-media" },
+    { "binding": "BACKUP", "bucket_name": "immich-originals-backup" }
+  ],
+  "queues": {
+    "producers": [
+      { "binding": "PROCESS_QUEUE", "queue": "asset-process" },
+      { "binding": "BACKUP_QUEUE", "queue": "asset-backup" },
+      { "binding": "ML_QUEUE", "queue": "asset-ml" }
+    ],
+    "consumers": [
+      // No dead-letter queues: the process consumer marks an asset failed on its last delivery (PROCESS_MAX_RETRIES
+      // in src/process/consumer.ts must match max_retries), and the weekly cron re-queues backups that never landed.
+      { "queue": "asset-process", "max_batch_size": 5, "max_retries": 5, "retry_delay": 30 },
+      { "queue": "asset-backup", "max_batch_size": 10, "max_retries": 5, "retry_delay": 60 },
+      { "queue": "asset-ml", "max_batch_size": 5, "max_retries": 5, "retry_delay": 60, "max_concurrency": 2 }
+    ]
+  },
+  "images": { "binding": "IMAGES" },
+  "vectorize": [
+    { "binding": "CLIP_INDEX", "index_name": "immich-clip" },
+    { "binding": "FACE_INDEX", "index_name": "immich-faces" }
+  ],
+  // Prebuilt amd64 images on Docker Hub, built from containers/ (media; ml default target `full`; ml `--target search`),
+  // so deploying needs no Docker. To use your own builds, point these at a Dockerfile or your registry.
+  "containers": [
+    { "class_name": "MediaContainer", "image": "docker.io/krugerm/immich-cf-media:0.1.0", "instance_type": "standard-1", "max_instances": 3 },
+    { "class_name": "MlContainer", "image": "docker.io/krugerm/immich-cf-ml:0.1.0", "instance_type": "standard-2", "max_instances": 2 },
+    { "class_name": "MlSearchContainer", "image": "docker.io/krugerm/immich-cf-ml-search:0.1.0", "instance_type": "standard-2", "max_instances": 1 }
+  ],
+  "durable_objects": {
+    "bindings": [
+      { "name": "REALTIME", "class_name": "RealtimeHub" },
+      { "name": "MEDIA_CONTAINER", "class_name": "MediaContainer" },
+      { "name": "ML_CONTAINER", "class_name": "MlContainer" },
+      { "name": "ML_SEARCH", "class_name": "MlSearchContainer" },
+      { "name": "CLUSTER_HUB", "class_name": "ClusterHub" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1-realtime-hub", "new_sqlite_classes": ["RealtimeHub"] },
+    { "tag": "v2-media-container", "new_sqlite_classes": ["MediaContainer"] },
+    { "tag": "v3-ml", "new_sqlite_classes": ["MlContainer", "ClusterHub"] },
+    { "tag": "v4-ml-search", "new_sqlite_classes": ["MlSearchContainer"] }
+  ],
+  "ratelimits": [
+    { "name": "LOGIN_LIMITER", "namespace_id": "1001", "simple": { "limit": 10, "period": 60 } },
+    { "name": "RESET_LIMITER", "namespace_id": "1002", "simple": { "limit": 5, "period": 60 } }
+  ],
+  "triggers": { "crons": ["17 3 * * *", "41 4 * * SUN"] },
+  "vars": {
+    "SERVER_VERSION": "3.3.0",
+    // Product name in password reset email.
+    "APP_NAME": "Immich",
+    // Sender of password reset email; its domain must be verified in Resend. Unset: no email is sent.
+    "MAIL_FROM": "Immich <photos@example.com>"
+  }
+}

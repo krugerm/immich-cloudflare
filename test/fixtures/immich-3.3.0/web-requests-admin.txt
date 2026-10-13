@@ -1,0 +1,29 @@
+# Captured from reference Immich v3.3.1 via the web app, every page under /admin (all system-settings accordions opened once).
+# De-duplicated, IDs replaced by {id}. Every admin page also calls GET /api/system-config and GET /api/system-config/defaults.
+GET /api/system-config
+GET /api/system-config/defaults
+GET /api/system-config/storage-template-options
+GET /api/admin/users?withDeleted=true
+GET /api/admin/users?withDeleted=false
+GET /api/admin/users?id={id}&withDeleted=true
+GET /api/admin/users/{id}/preferences
+GET /api/admin/users/{id}/statistics
+GET /api/admin/users/{id}/sessions
+GET /api/admin/users/{id}/calendar-heatmap?from={date}&to={date}&type=Upload
+GET /api/server/statistics
+GET /api/queues
+GET /api/queues/{name}
+GET /api/queues/{name}/jobs?status=failed&status=paused
+GET /api/jobs
+GET /api/libraries
+GET /api/libraries/{id}
+GET /api/admin/integrity/summary
+GET /api/admin/integrity/report?type={type}
+GET /api/admin/database-backups
+
+# Phase 2 writes offered by the admin pages (not implemented)
+# Users:        POST /api/admin/users, PUT /api/admin/users/{id}, DELETE /api/admin/users/{id}, POST /api/admin/users/{id}/restore, PUT /api/admin/users/{id}/preferences, POST /api/admin/users/{id}/unlink-all-oauth-accounts
+# System settings: PUT /api/system-config, POST /api/admin/notifications/test-email
+# Queues/jobs:  PUT /api/queues/{name}, DELETE /api/queues/{name}/jobs, PUT /api/jobs/{name} (legacy run command), POST /api/jobs
+# Libraries:    POST /api/libraries, PUT /api/libraries/{id}, DELETE /api/libraries/{id}, POST /api/libraries/{id}/scan, POST /api/libraries/{id}/validate
+# Maintenance:  POST /api/admin/maintenance (set mode), DELETE /api/admin/database-backups, POST /api/admin/database-backups/upload, POST /api/admin/database-backups/start-restore, DELETE /api/admin/integrity/report/{id}, integrity checks started via POST /api/jobs
