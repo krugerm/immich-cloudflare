@@ -1,0 +1,10 @@
+.superpowers/
+.serena/
+wrangler.local.jsonc
+node_modules
+.wrangler
+.dev.vars
+public
+dist
+
+scripts/geodata/out/

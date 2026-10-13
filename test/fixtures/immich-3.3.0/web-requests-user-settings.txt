@@ -1,0 +1,30 @@
+# Captured from reference Immich v3.3.1 via the web app, /user-settings with every section expanded once.
+# De-duplicated, IDs replaced by {id}. Shared shell requests (server/*, users/me, notifications, albums) are in web-requests.txt.
+GET /api/api-keys
+GET /api/sessions
+GET /api/auth/status
+GET /api/albums/statistics
+GET /api/assets/statistics?visibility=timeline
+GET /api/assets/statistics?isFavorite=true
+GET /api/assets/statistics?visibility=archive
+GET /api/assets/statistics?isTrashed=true
+GET /api/users/me/calendar-heatmap?from={date}&to={date}&type=Upload
+GET /api/users/me/calendar-heatmap?from={date}&to={date}&type=Taken
+GET /api/partners?direction=shared-by
+GET /api/partners?direction=shared-with
+GET /api/users
+GET /api/cluster-groups/{id}/users
+GET /api/cluster-groups/{id}/requests
+GET /api/cluster-groups/requests
+
+# Phase 2 writes offered by the settings page (read from web source and not executed; not implemented)
+# Account:            PUT /api/users/me, PUT/DELETE /api/users/me/profile-image (POST), PUT /api/users/me/preferences
+# App/Download/Features/Notifications: PUT /api/users/me/preferences
+# Password:           POST /api/auth/change-password
+# PIN code:           POST /api/auth/pin-code, PUT /api/auth/pin-code, DELETE /api/auth/pin-code
+# Authorized devices: DELETE /api/sessions, DELETE /api/sessions/{id}
+# API keys:           POST /api/api-keys, PUT /api/api-keys/{id}, DELETE /api/api-keys/{id}
+# Purchase:           PUT/DELETE /api/users/me/license, PUT/DELETE /api/server/license (GET /api/server/license, /api/users/me/license on that section; section was inert in the reference capture)
+# Sharing (partners): POST /api/partners, PUT /api/partners/{id}, DELETE /api/partners/{id}
+# Sharing (cluster):  PUT /api/cluster-groups/{id}/requests, PUT /api/cluster-groups/requests/{id}/accept, DELETE /api/cluster-groups/requests/{id}, POST /api/cluster-groups/{id}/leave, POST /api/cluster-groups/{id}/regenerate-people
+# OAuth:              POST /api/oauth/link, POST /api/oauth/unlink

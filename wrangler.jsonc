@@ -1,0 +1,80 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "immich-cf",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "limits": { "cpu_ms": 300000 },
+  "workers_dev": true,
+  // To serve the Worker on your own domain (a zone in the same Cloudflare account), add:
+  // "routes": [{ "pattern": "photos.example.com", "custom_domain": true }],
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/.well-known/*", "/forgot-password", "/reset-password"]
+  },
+  "d1_databases": [
+    // replace: npx wrangler d1 create immich
+    { "binding": "DB", "database_name": "immich", "database_id": "00000000-0000-0000-0000-000000000000", "migrations_dir": "migrations" }
+  ],
+  "r2_buckets": [
+    { "binding": "MEDIA", "bucket_name": "immich-media" },
+    { "binding": "BACKUP", "bucket_name": "immich-originals-backup" }
+  ],
+  "queues": {
+    "producers": [
+      { "binding": "PROCESS_QUEUE", "queue": "asset-process" },
+      { "binding": "BACKUP_QUEUE", "queue": "asset-backup" },
+      { "binding": "ML_QUEUE", "queue": "asset-ml" }
+    ],
+    "consumers": [
+      { "queue": "asset-process", "max_batch_size": 5, "max_retries": 5, "retry_delay": 30, "dead_letter_queue": "asset-process-dlq" },
+      { "queue": "asset-process-dlq", "max_batch_size": 10, "max_retries": 5 },
+      { "queue": "asset-backup", "max_batch_size": 10, "max_retries": 5, "retry_delay": 60, "dead_letter_queue": "asset-backup-dlq" },
+      { "queue": "asset-ml", "max_batch_size": 5, "max_retries": 5, "retry_delay": 60, "max_concurrency": 2 }
+    ]
+  },
+  "images": { "binding": "IMAGES" },
+  "vectorize": [
+    { "binding": "CLIP_INDEX", "index_name": "immich-clip" },
+    { "binding": "FACE_INDEX", "index_name": "immich-faces" }
+  ],
+  "containers": [
+    { "class_name": "MediaContainer", "image": "./containers/media/Dockerfile", "instance_type": "standard-1", "max_instances": 3 },
+    // The ml Dockerfile's default (last) stage is `full`, so wrangler builds it from the path at deploy time.
+    { "class_name": "MlContainer", "image": "./containers/ml/Dockerfile", "instance_type": "standard-2", "max_instances": 2 },
+    // Wrangler's containers config has no build-target field, so the `search` stage is built and pushed by hand:
+    //   docker build --platform linux/amd64 --target search -t immich-cf-ml-search:v1 containers/ml
+    //   npx wrangler containers push immich-cf-ml-search:v1
+    // then replace <account-id> below with your Cloudflare account id (npx wrangler whoami).
+    { "class_name": "MlSearchContainer", "image": "registry.cloudflare.com/<account-id>/immich-cf-ml-search:v1", "instance_type": "standard-2", "max_instances": 1 }
+  ],
+  "durable_objects": {
+    "bindings": [
+      { "name": "REALTIME", "class_name": "RealtimeHub" },
+      { "name": "MEDIA_CONTAINER", "class_name": "MediaContainer" },
+      { "name": "ML_CONTAINER", "class_name": "MlContainer" },
+      { "name": "ML_SEARCH", "class_name": "MlSearchContainer" },
+      { "name": "CLUSTER_HUB", "class_name": "ClusterHub" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1-realtime-hub", "new_sqlite_classes": ["RealtimeHub"] },
+    { "tag": "v2-media-container", "new_sqlite_classes": ["MediaContainer"] },
+    { "tag": "v3-ml", "new_sqlite_classes": ["MlContainer", "ClusterHub"] },
+    { "tag": "v4-ml-search", "new_sqlite_classes": ["MlSearchContainer"] }
+  ],
+  "ratelimits": [
+    { "name": "LOGIN_LIMITER", "namespace_id": "1001", "simple": { "limit": 10, "period": 60 } },
+    { "name": "RESET_LIMITER", "namespace_id": "1002", "simple": { "limit": 5, "period": 60 } }
+  ],
+  "triggers": { "crons": ["17 3 * * *", "41 4 * * SUN"] },
+  "vars": {
+    "SERVER_VERSION": "3.3.0",
+    // Product name in password reset email.
+    "APP_NAME": "Immich",
+    // Sender of password reset email; its domain must be verified in Resend. Unset: no email is sent.
+    "MAIL_FROM": "Immich <photos@example.com>"
+  }
+}
